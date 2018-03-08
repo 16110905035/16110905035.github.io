@@ -5,7 +5,7 @@ description: 欢迎来到小飞的个人站~
 # 头像里面的标题
 avatarTitle: Jhon Nash
 # 头像里面的描述
-avatarDesc: 咸鱼
+avatarDesc: 垂涎python的小飞
 url: "http://16110905035.github.io"
 
 # Comment
@@ -15,7 +15,7 @@ url: "http://16110905035.github.io"
 
 # Social
 social:
-    weibo: 1246389103
+    # weibo: 1246389103
     github: 16110905035
     # twitter:
     mail: 1246389103@qq.com
@@ -66,3 +66,4 @@ nav:
 plugins: [jekyll-paginate,jekyll-sitemap]
 paginate: 20
 paginate_path: "page/:num/"
+plugins: [jekyll-paginate]
