@@ -1,0 +1,414 @@
+//BTree.h文件，由于使用了模板所以没法将声明与实现分离
+#pragma once
+#include <queue>
+using namespace std;
+//B树的结点定义
+
+
+struct BTreeNode
+{
+	int keynum;               //关键字个数
+	int *key;                  //指向关键字数组
+	BTreeNode  *parent;  //指向父亲结点
+	BTreeNode  **child;      //指向孩子结点数组的指针
+	BTreeNode(int n, int m, BTreeNode   *p)
+	{
+		keynum = n;
+		parent = p;
+		key = new int [m+1];           //最多有m-1个关键字，K0不用，Km用来当哨兵
+		child = new BTreeNode *[m+1]; //最多有m个分支，Am用来当哨兵
+		for(int i = 0; i <= m; i++)
+			child[i] = NULL;
+	}
+	~BTreeNode()
+	{
+		delete [] key; key = NULL;
+		delete [] child; child = NULL;
+	}
+};
+
+//搜索结果的三元组定义
+
+struct Triple
+{
+	BTreeNode  * node;  //关键字所在结点
+	int i;                //关键字下标位置
+	bool tag;             //搜索是否成功
+	Triple(BTreeNode  *nd, int pos, bool t)
+	{ node = nd; i = pos; tag = t;}
+};
+
+//B树定义
+
+class BTree
+{
+public:
+	BTree();
+	BTree(int m , BTreeNode  * root);
+	~BTree();
+	Triple  Search(const int & x); //搜索核心函数  --------------------------------------------------------
+	bool Insert(const int & x);      //插入核心函数----------------------------------------------------------
+	bool Delete(const int & x);      //删除核心函数---------------------------------------------------------
+	void InsertKey(BTreeNode  *p, int  k, BTreeNode  *a, int i);    //插入一个二元组(K,A)
+	void SpliteNode(BTreeNode  *p, int  *k, BTreeNode  **a, int i); //分裂结点
+	void RightAdjust(BTreeNode  *p, BTreeNode  *q, int i);  //从右子女取关键字
+	void LeftAdjust(BTreeNode  *p, BTreeNode  *q, int i);   //从左子女取关键字
+	void LeftCompress(BTreeNode  *p, int i);  //往左移动1个位置
+	void RightCompress(BTreeNode  *p, int i); //往右移动1个位置
+	void MergeNode(BTreeNode  *p, BTreeNode  *q, BTreeNode  *pR, int i); //合并两个结点
+	void PrintBTree(); //打印B树
+	void show_Btree();
+private:
+	int m_m;                //路数，即最大子树棵数
+public:
+	BTreeNode  *m_pRoot;  //B树的根结点
+};
+BTree ::BTree() //默认构造函数------------------------------------------------------------------
+{
+	m_m = 5;         //默认是5阶
+	m_pRoot = NULL;  //根结点初始为空
+}
+BTree ::BTree(int m , BTreeNode  * root)//----------------------------------------------------
+{
+	m_m = m;
+	m_pRoot = root;
+}
+BTree ::~BTree() //释放所有的空间---------------------------------------------------------------
+{
+	if(m_pRoot != NULL)
+	{
+		queue<BTreeNode  *> nodeQueue; //利用队列，按层次遍历B树
+		nodeQueue.push(m_pRoot);         //放入根结点
+		while(nodeQueue.size())
+		{
+			BTreeNode  * p = nodeQueue.front();
+			if(p->child[0] != NULL) //不是叶结点，需考虑子女结点的删除
+			{
+				for(int i = 0; i <= p->keynum; i++)
+					nodeQueue.push(p->child[i]);
+			}
+			nodeQueue.pop();
+			delete p;
+			p = NULL;
+		}
+	}
+}
+//函数功能： 查找关键字x是否在B树中
+//函数参数： x为查找的关键字
+//返回值：   一个Triple对象(node, i, tag)，tag=true表示x等于结点r中的Ki；tag=false表示x不在树中，r是最后一个被搜索的结点
+
+Triple  BTree::Search(const int  &x)
+{
+	int i = 0;  //下标
+	BTreeNode  *p = m_pRoot, *q = NULL;  //用来保存当前结点和它的父结点
+
+	while(p != NULL) //一直检查到叶结点
+	{
+		//n, A0,(K1, A1), (K2, A2), ... (Kn, An)
+		//确定i，使得Ki <= x < Ki+1，key[0]不放数据
+		//下面这条语句当然也可以写成 for(i = 1; i <= n && x >= p->key[i]; i++)
+		//但是为了与Ki <= x < Ki+1这个关系式统一，采用了下述写法，观察后面的程序，发现这样写还避免了下标溢出的判断
+		int n = p->keynum;   //当前结点的关键字个数
+		for(i = 0; i < n && x >= p->key[i+1]; i++)  //可以改进一下，用二分查找
+			;
+		if(x == p->key[i]) //是否已找到，不用判断下标，i最大为n
+			return Triple (p, i, true);
+		q = p;
+		p = p->child[i];     //搜索下一层，Ki与Ki+1中间的指针
+	}
+	return Triple (q, i, false); //x不在树中，找到了可以插入的结点位置
+}
+//函数功能： 插入关键字x到B树中
+//函数参数： x为插入的关键字
+//返回值：   插入是否成功
+
+bool BTree ::Insert(const int  &x)
+{
+	if(m_pRoot == NULL) //空树
+	{
+		m_pRoot = new BTreeNode (1, m_m, NULL);  //新的根含有1个关键字
+		m_pRoot->key[1] = x;    //根的关键字
+		return true;
+	}
+
+	Triple  triple = Search(x); 	//检查是否已存在
+	if(triple.tag == true) //x已在B树中
+		return false;
+
+	BTreeNode  *p = triple.node, *q; //结点地址
+	//构造插入的两元组(k,a) 其中k为关键字，a为右邻指针
+	BTreeNode  *a = NULL;
+	int  k  = x;
+	int i = triple.i;
+
+	while(1) //插入过程
+	{
+		if(p->keynum < m_m-1) //关键字个数未到达上限，可以直接插入
+		{
+			InsertKey(p, k, a, i); //(k, a)插入到位置(Ki, Ai)后面
+			return true;
+		}
+		SpliteNode(p, &k, &a, i); //将p结点分裂成两个结点，一个结点仍为p，另外一个变为两元组(k,a)，以便插入到父结点
+		if(p->parent != NULL)     //父结点不为空
+		{
+			q = p->parent; //获得父结点
+			for(i = 0; i < q->keynum && x >= q->key[i+1]; i++) //确定新的插入位置i
+				;
+			p = q;   //进入上一层
+		}
+		else
+		{
+			//已经到达了根，需要新建一个结点
+			m_pRoot = new BTreeNode (1, m_m, NULL);  //新的根含有1个关键字
+			m_pRoot->key[1] = k; //新根的关键字
+			m_pRoot->child[0] = p; //左指针
+			m_pRoot->child[1] = a; //右指针
+			p->parent = a->parent = m_pRoot; //更新左右指针的父结点
+			return true;
+		}
+	}
+}
+//函数功能： 插入关键字x到B树中，这是实际的插入函数
+//函数参数： p指向插入关键字所在结点，k为插入的关键字，a为关键字的右邻，i为插入位置
+//返回值：   无
+
+void BTree ::InsertKey(BTreeNode  *p, int  k, BTreeNode  *a, int i)
+{
+	for(int j = p->keynum; j > i; j--) //将key[i],child[i]以后的元素都往后移一个位置
+	{
+		p->key[j + 1] = p->key[j];
+		p->child[j + 1] = p->child[j];
+	}
+	p->keynum++;        //结点的关键字个数加1
+	p->key[i + 1] = k; //插入两元组在key[i],child[i]以后
+	p->child[i + 1] = a;
+	if(a != NULL)    //若为为空，需更新父结点指针
+		a->parent = p;
+}
+//函数功能： 分裂结点
+//函数参数： p指向要分裂的结点，k指向插入的关键字，a指向关键字的右邻，i为插入位置
+//返回值：   无
+
+void BTree ::SpliteNode(BTreeNode  *p, int  *k, BTreeNode  **a, int i)
+{
+	InsertKey(p, *k, *a, i); //先插了再说
+	int mid = (m_m + 1)/2;   //[ceil(m/2)]
+	int size = (m_m & 1)? mid : mid + 1; //奇偶性决定了分裂时拷贝的关键字个数
+
+	BTreeNode  *q = new BTreeNode (0, m_m, p->parent); //新结点
+	//将p的key[mid+1...m]和child[mid..m]移到q的key[1...mid-1]和child[0...mid-1]
+	q->child[0] = p->child[mid];
+	for(int j = 1; j < size; j++)
+	{
+		q->key[j] = p->key[mid + j];
+		q->child[j] = p->child[mid + j];
+	}
+	//修改q中的子女的父结点为q，这里很重要，因为这些子女原来的父结点为p
+	if(q->child[0] != NULL)
+	{
+		for(int j = 0; j < size; j++)
+			q->child[j]->parent = q;
+	}
+	//更新结点的关键字个数
+	q->keynum = m_m - mid;  //结点q：m –[ceil(m/2)], child[ceil(m/2)],(K [ceil(m/2)]+1, A [ceil(m/2)]+1), …, (Km, Am)
+	p->keynum = mid - 1;    //结点p：[ceil(m/2)]–1, A0, (K1, A1), (K2,A2), …, (key[ceil(m/2)]–1, child[ceil(m/2)]–1)
+	//构建新的两元组(k,a)
+	*k = p->key[mid];
+	*a = q;
+}
+
+//函数功能： 删除关键字x
+//函数参数： x为要删除的关键字
+//返回值：   删除是否成功
+
+bool BTree ::Delete(const int & x)
+{
+	Triple  triple = Search(x); //检查是否已存在
+	if(triple.tag == false)      //x不在B树中
+		return false;
+	BTreeNode  *p = triple.node, *q; //要删除的关键字所在结点
+	int i = triple.i;
+
+	if(p->child[i] != NULL) //非叶结点
+	{
+		q = p->child[i];    //找右子树的最小关键码
+		while(q->child[0] != NULL)
+			q = q->child[0];
+		p->key[i] = q->key[1];   //用叶结点替换
+		LeftCompress(q, 1);  //删除key[1]，其实只是用后面的结点覆盖一下即可
+		p = q;               //转换为叶结点的删除
+	}
+	else
+		LeftCompress(p, i);  //叶结点直接删除，其实只是用后面的结点覆盖一下即可
+
+	int mid = (m_m + 1) / 2; //求[ceil(m/2)]
+	//下面开始调整
+	while(1)
+	{
+		if(p == m_pRoot || p->keynum >= mid-1) //情形1和情形2
+			break;
+		else
+		{
+			q = p->parent; //父亲结点
+			for(i = 0; i <= q->keynum && q->child[i] != p; i++) //找到p在父结点中的位置Ai
+				;
+			if(i == 0)     //p为最左指针
+				RightAdjust(p, q, i);  //结点p、父结点q、p的右兄弟结点进行旋转调整
+			else
+				LeftAdjust(p, q, i);   //结点p、父结点q、p的左兄弟结点进行旋转调整
+			p = q;         //向上调整
+		}
+	}
+	if(m_pRoot->keynum == 0) //一颗空树
+	{
+		p = m_pRoot->child[0];
+		delete m_pRoot;
+		m_pRoot = p;
+		if(m_pRoot != NULL)
+			m_pRoot->parent = NULL;
+	}
+	return true;
+}
+//函数功能： 通过右子女调整，如果右子女有多余结点，从右子女取一个关键字
+//函数参数： p指向被删除的关键字所在结点，q指向父结点，i为p在q中的位置
+//返回值：   无
+
+void BTree ::RightAdjust(BTreeNode  *p, BTreeNode  *q, int i)
+{
+	BTreeNode  *pR = q->child[i+1];  //p的右兄弟
+	if(pR->keynum >= (m_m+1)/2)       //情形3，兄弟有足够多的关键字，即至少还有[ceil(m/2)]
+	{
+		//调整p
+		p->keynum++;                  //p的关键字个数加1
+		p->key[p->keynum] = q->key[i+1];  //父结点相应关键码下移
+		p->child[p->keynum] = pR->child[0];   //右兄弟最左指针移到p的最右
+		if(p->child[p->keynum] != NULL)
+			p->child[p->keynum]->parent = p;  //修改父结点，原来是pR
+		//调整父结点
+		q->key[i+1] = pR->key[1];      //右兄弟的最小关键码上移到父结点
+		//调整右兄弟
+		pR->child[0] = pR->child[1];       //右兄弟剩余关键字与指针前移
+		LeftCompress(pR, 1);       //覆盖key[1],child[1]，关键字个数减1，LeftCompress中自动会减1
+	}
+	else
+		MergeNode(p, q, pR, i + 1);//情形4 (...p Ki+1 pR...)
+}
+//函数功能： 通过左子女调整，如果左子女有多余结点，从左子女取一个关键字
+//函数参数： p指向被删除的关键字所在结点，q指向父结点，i为p在q中的位置
+//返回值：   无
+
+void BTree ::LeftAdjust(BTreeNode  *p, BTreeNode  *q, int i)
+{
+	BTreeNode  *pL = q->child[i-1]; //p的左兄弟
+	if(pL->keynum >= (m_m+1)/2)      //情形3
+	{
+		//调整p
+		RightCompress(p, 1);     //p的关键字和指针往右移动，空出位置放左子女的关键字，RightCompress会自动加1
+		p->child[1] = p->child[0];
+		p->key[1] = q->key[i];        //父结点相应关键码下移
+		p->child[0] = pL->child[pL->keynum]; //左兄弟最右指针移到p的最左
+		if(p->child[0] != NULL)
+			p->child[0]->parent = p;      //修改父结点，原来是pL
+		//调整父结点
+		q->key[i] = pL->key[pL->keynum]; //左兄弟的最大关键码上移到父结点
+		//调整左兄弟
+		pL->keynum--;   //左兄弟的关键字个数减1
+	}
+	else
+	{
+		//左右互换一下，以符合合并函数的参数要求
+		BTreeNode  *pR = p;
+		p = pL;
+		MergeNode(p, q, pR, i);   //情形4，注意这里i，而不是i+1 (...p Ki pR...)
+	}
+}
+//函数功能： 将结点p自i+1开始的关键字和指针往左移动1，原来的key[i],child[i]其实被覆盖掉了
+//函数参数： p指向结点，i为被覆盖的位置
+//返回值：   无
+
+void BTree ::LeftCompress(BTreeNode  *p, int i)
+{
+	int n = p->keynum;   //结点关键字个数
+	for(int j = i; j < n; j++)
+	{
+		p->key[j] = p->key[j + 1];
+		p->child[j] = p->child[j + 1];
+	}
+	p->keynum--; //关键字个数减1
+}
+//函数功能： 将结点p自i开始的关键字和指针往右移动1，原来的key[i],child[i]空出来了
+//函数参数： p指向结点，i为空出来的位置，用于放新的关键字
+//返回值：   无
+
+void BTree ::RightCompress(BTreeNode  *p, int i)
+{
+	for(int j = p->keynum; j >= i; j--) //key[i],child[i]空出来用以放插入的二元组
+	{
+		p->key[j + 1] = p->key[j];
+		p->child[j + 1] = p->child[j];
+	}
+	p->keynum++; //关键字个数加1
+}
+//函数功能： 合并两个结点
+//函数参数： p指向结点，q指向父亲，pR指向p的右兄弟，i为(...p,K,pR...)中的K位置
+//返回值：   无
+
+void BTree ::MergeNode(BTreeNode  *p, BTreeNode  *q, BTreeNode  *pR, int i)
+{
+	int n = p->keynum + 1;   //p结点下一个放关键字的位置
+	p->key[n] = q->key[i];    //下降父结点的关键字
+	p->child[n] = pR->child[0];   //从右兄弟左移一个指针
+	for(int j = 1; j <= pR->keynum; j++) //将右兄弟剩余关键字和指针移到p中
+	{
+		p->key[n + j] = pR->key[j];
+		p->child[n + j] = pR->child[j];
+	}
+	if(p->child[0]) //修改p中的子女的父结点为p，这里很重要，因为这些子女原来的父结点为pR，与分裂相对
+	{
+		for(int j = 0; j <= pR->keynum; j++)
+			p->child[n + j]->parent = p;
+	}
+	LeftCompress(q, i);            //父结点的关键字个数减1
+	p->keynum = p->keynum + pR->keynum + 1; //合并后关键字的个数
+	delete pR;
+	pR = NULL;
+}
+//函数功能： 打印B树
+//函数参数： 无
+//返回值：   无
+
+void BTree ::PrintBTree()
+{
+	if(m_pRoot != NULL)
+	{
+		queue<BTreeNode  *> nodeQueue; //利用队列
+		nodeQueue.push(m_pRoot);         //放入根结点
+		while(nodeQueue.size())
+		{
+			BTreeNode  * p = nodeQueue.front();
+			if(p->child[0] != NULL) //非叶结点
+			{
+				nodeQueue.push(p->child[0]);  //将子女结点的指针放入队列中
+				for(int i = 1; i <= p->keynum; i++)
+				{
+					nodeQueue.push(p->child[i]);
+					cout<<p->key[i]<<' ';
+
+				}
+				cout<<endl;
+			}
+			else
+			{
+				for(int i = 1; i <= p->keynum; i++)
+					cout<<p->key[i]<<' ';
+                cout<<endl;
+			}
+
+//			if(p->parent) //打印父结点的第一个关键字
+//				cout<<"-----First key of their parent:"<<p->parent->key[1]<<endl;
+//			else
+//				cout<<endl;
+			nodeQueue.pop();
+		}
+	}
+}
