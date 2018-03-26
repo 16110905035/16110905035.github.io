@@ -39,7 +39,7 @@ PS: java 基本数据类型： 真正赋值 ，对象则是引用
 ### java String类 java api 
 
 ```
-        string  s ;
+ 	        string  s ;
 		char[] arr = s.toCharArray();
 		 s.equals(str);// 判断s 与str是否相等，相等返回 true，否则false
 		 s.equalsIgnoreCase(str);// 忽略大小写
@@ -49,7 +49,7 @@ PS: java 基本数据类型： 真正赋值 ，对象则是引用
 		 s.substring(int start,int end);// 返回一个s[start,end)的字符串
 ```
 ### java 接口的区别：
-
+>
 * Interface是用来定义类的，I并且是一个极度抽象的类，因为它允许人们通过创建一个能够被向上转型为多种基类的类型，来实现某种类似多种继承变种的特性。
 
 * Interface接口仅包含方法的声明，而不包含其实现。也就是说，实现接口的每个类都必须为该接口中声明的每个方法提供实现。 
@@ -57,3 +57,5 @@ Interface接口方法定义不能包含任何属性（如 public 或 private）�
 * 通过 extends 语句可以使用一个接口继承多个接口，通过 implements 语句可以使用一个类继承多个接口。 
 * 通俗的讲：interface 只能定义，不能实现，implements可以实现
 * 引自：[传送门](https://www.cnblogs.com/hljarmy/archive/2013/10/30/3396606.html) 
+
+========================================================= 未完待续  =================================================================
