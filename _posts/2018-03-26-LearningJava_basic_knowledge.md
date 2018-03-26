@@ -1,4 +1,4 @@
-﻿---
+---
 layout: post
 title: Java学习笔记之基础知识+水题日志
 tags: Java Basic Knowledge
