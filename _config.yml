@@ -15,10 +15,10 @@ url: "http://16110905035.github.io"
 
 # Social
 social:
-     weibo: 1246389103
+    # weibo: 1246389103
     github: 16110905035
-    mail: 1246389103@qq.com
     # twitter:
+    mail: 1246389103@qq.com
 
 # 百度统计
 # 使用博客模板请去掉或者更换 id
