@@ -5,10 +5,10 @@ tags: RememberMe
 ---
 ### 概述:
  1. [麦肯锡方法-time: 2018-04-30](https://16110905035.github.io/2018/04/successfulFunction/)
- 2. [人性的弱点-time:2018.04.30](https://16110905035.github.io/2018/04/Disadvantange/)
- 3. [本杰明富兰克林自传-time:2018-04-30](https://16110905035.github.io/2018/04/readingLeave/)
- 4. [假如给我三天光明-time:2018-04-30](https://16110905035.github.io/2018/04/Threedays/)
- 5. [永不止步](https://16110905035.github.io/2018/04/r/neverGiveUp)
+ 2. [人性的弱点-time:2018.04.30](https://16110905035.github.io/2018/04/humanDisadvantange/)
+ 3. [本杰明富兰克林自传-time:2018-04-30](https://16110905035.github.io/2018/04/autobiographyOfBenjaminFranklin/)
+ 4. [假如给我三天光明-time:2018-04-30](https://16110905035.github.io/2018/04/threeDays/)
+ 5. [永不止步](https://16110905035.github.io/2018/04/neverGiveUp/)
 
 ### 名言区：
 
