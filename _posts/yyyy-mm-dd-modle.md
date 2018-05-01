@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Java学习笔记之水题日志
+title: Java学习笔记之水
 tags: Java_Basic_Knowledge
 ---
 ### 概述:
